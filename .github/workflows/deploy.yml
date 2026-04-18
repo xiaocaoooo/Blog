@@ -49,8 +49,7 @@ jobs:
       - name: Build
         working-directory: mizuki
         run: |
-          ls
-          pnpm install
+          pnpm install -w
           pnpm build
 
       - name: Upload Pages Artifact
