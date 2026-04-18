@@ -45,7 +45,7 @@ jobs:
         working-directory: mizuki
         run: |
           ls
-          pnpm install -w
+          pnpm install
 
       - name: Sync and Overwrite Content
         run: |
