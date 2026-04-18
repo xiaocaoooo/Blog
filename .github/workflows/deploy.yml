@@ -29,11 +29,6 @@ jobs:
           repository: LyraVoid/Mizuki
           path: mizuki
 
-      - name: Sync and Overwrite Content
-        run: |
-          rm -rf mizuki/src/content/* || true
-          rsync -av content/ mizuki/ --exclude=.git
-
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -46,11 +41,18 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: mizuki/pnpm-lock.yaml
 
+      - name: Install Dependencies
+        working-directory: mizuki
+        run: pnpm install
+
+      - name: Sync and Overwrite Content
+        run: |
+          rm -rf mizuki/src/content/* || true
+          rsync -av content/ mizuki/ --exclude=.git
+
       - name: Build
         working-directory: mizuki
-        run: |
-          pnpm install -w
-          pnpm build
+        run: pnpm build
 
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
