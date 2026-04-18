@@ -601,7 +601,6 @@ export const sidebarLayoutConfig: SidebarLayoutConfig = {
 		left: ["announcement", "tags", "card-toc"],
 		right: ["site-stats", "calendar", "categories", "music-sidebar"],
 		drawer: [
-			"profile",
 			"announcement",
 			"music-sidebar",
 			"categories",
