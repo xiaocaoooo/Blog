@@ -43,9 +43,7 @@ jobs:
 
       - name: Install Dependencies
         working-directory: mizuki
-        run: |
-          ls
-          pnpm install
+        run: pnpm install
 
       - name: Sync and Overwrite Content
         run: |
