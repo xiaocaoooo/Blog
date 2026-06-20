@@ -54,7 +54,6 @@ jobs:
           ORIGIN_IP: ${{ secrets.ORIGIN_IP }}
           TARGET_DOMAIN: ${{ secrets.TARGET_DOMAIN }}
         run: |
-          # 开启递归匹配支持
           shopt -s globstar
           
           MODEL="${OPENAI_MODEL:-gpt-4o-mini}"
@@ -78,12 +77,22 @@ jobs:
             [ -z "$file" ] && continue
             echo "--- Processing: $file ---"
             
-            # 移除已有的摘要块，防止 AI 在总结中包含旧的摘要
             sed '/<!-- ai-summary-start -->/,/<!-- ai-summary-end -->/d' "$file" > body.tmp
+            
+            # English Prompt for better reasoning, requesting Simplified Chinese output.
+            # Focuses on "Finding + Brief Explanation" to balance length.
+            SYSTEM_PROMPT="You are a professional technical editor. Analyze the provided blog post and synthesize its core value, key problems solved, and final conclusions.
+            
+            Requirements:
+            1. Language: You MUST output the summary in Simplified Chinese.
+            2. Format: Use a Markdown unordered list with 3 to 5 high-impact bullet points.
+            3. Content Density: Each point should follow the pattern of [Core Takeaway]: [Brief Explanation]. Avoid overly brief one-liners or excessively long paragraphs.
+            4. Style: Maintain a professional, objective, and concise tone.
+            5. Constraints: Output ONLY the summary content. No preamble (e.g., 'This article discusses...'), no introductory remarks, no closing statements, and no quotation marks."
             
             JSON_PAYLOAD=$(jq -n \
               --rawfile user body.tmp \
-              --arg sys "You are an expert content strategist. Analyze the provided blog post and extract the core value and key takeaways. Summarize them into 2-3 high-impact bullet points using a Markdown list. Output ONLY the summary text, no preamble, no quotes, and no conversational filler." \
+              --arg sys "$SYSTEM_PROMPT" \
               --arg model "$MODEL" \
               '{model: $model, messages: [{role: "system", content: $sys}, {role: "user", content: $user}], temperature: 0.7}')
             
@@ -128,8 +137,6 @@ jobs:
               fi
               
               echo "Error: Invalid response or empty content."
-              # 只有在失败时才打印完整体，避免日志过载，但确保能查到原因
-              
               RETRY_COUNT=$((RETRY_COUNT + 1))
               [ $RETRY_COUNT -lt $MAX_RETRIES ] && sleep $(( 2 ** RETRY_COUNT ))
             done
@@ -140,14 +147,11 @@ jobs:
               continue
             fi
             
-            # 生成完整的摘要块
             printf "<!-- ai-summary-start -->\n<details>\n  <summary>AI Summary</summary>\n  <div class=\"ai-summary-content\">\n    %s\n  </div>\n</details>\n<!-- ai-summary-end -->\n" "$SUMMARY" > summary_block.tmp
             
             if grep -q "<!-- ai-summary-start -->" "$file"; then
-              # 修复后的 awk：完全替换 start 到 end 之间的内容，不重复打印 $0
               awk 'BEGIN {while ((getline line < "summary_block.tmp") > 0) {block = block line "\n"}} /<!-- ai-summary-start -->/ {printf "%s", block; skip = 1; next} /<!-- ai-summary-end -->/ {skip = 0; next} skip {next} {print}' "$file" > "$file.tmp" && mv "$file.tmp" "$file"
             else
-              # 插入到 Frontmatter 之后
               SECOND_DASH_LINE=$(grep -n "^---$" "$file" | sed -n '2p' | cut -d: -f1)
               [ -z "$SECOND_DASH_LINE" ] && SECOND_DASH_LINE=0
               head -n "$SECOND_DASH_LINE" "$file" > "$file.tmp"
@@ -166,12 +170,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # 1. 直接检查工作区与最后一次提交之间是否有差异
-          # 注意：这里指定了目录，只检查该目录下的修改
           if ! git diff --quiet src/content/posts/; then
             echo "Changes detected, committing..."
-            
-            # 2. 确认有修改后，再将其添加到暂存区
             git add src/content/posts/
             git commit -m "docs: update AI summaries"
             git push
