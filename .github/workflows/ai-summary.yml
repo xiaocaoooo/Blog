@@ -100,6 +100,8 @@ jobs:
                 -H "Authorization: Bearer $OPENAI_API_KEY" \
                 -H "Content-Type: application/json" \
                 -d "$JSON_PAYLOAD")
+
+              echo "Response: $RESPONSE"
               
               SUMMARY=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // empty' | sed 's/^[ \t]*//;s/[ \t]*$//')
               
