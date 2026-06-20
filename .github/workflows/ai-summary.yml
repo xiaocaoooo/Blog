@@ -92,7 +92,7 @@ jobs:
               # Directly call curl. If HOST_HEADER is empty, the -H "Host: " will be ignored or handled.
               # We use a conditional to only pass the Host header if BYPASS_CF is true.
               if [ -n "$HOST_HEADER" ]; then
-                RESPONSE_FULL=$(curl -sL -A "$UA" \
+                RESPONSE_FULL=$(curl -sLk -A "$UA" \
                   -H "$HOST_HEADER" \
                   -H "Authorization: Bearer $OPENAI_API_KEY" \
                   -H "Content-Type: application/json" \
