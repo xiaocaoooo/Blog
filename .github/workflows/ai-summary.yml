@@ -59,7 +59,7 @@ jobs:
           
           if [ "${BYPASS_CF}" == "true" ]; then
             echo "Mode: Bypass Cloudflare (Direct Origin IP)"
-            API_URL="http://${ORIGIN_IP}/v1/chat/completions"
+            API_URL="https://${ORIGIN_IP}/v1/chat/completions"
             HOST_HEADER="Host:${TARGET_DOMAIN}"
           else
             echo "Mode: Public Route (via Cloudflare/Proxy)"
