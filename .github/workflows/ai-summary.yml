@@ -54,6 +54,9 @@ jobs:
           ORIGIN_IP: ${{ secrets.ORIGIN_IP }}
           TARGET_DOMAIN: ${{ secrets.TARGET_DOMAIN }}
         run: |
+          # 开启递归匹配支持
+          shopt -s globstar
+          
           MODEL="${OPENAI_MODEL:-gpt-4o-mini}"
           HOST_HEADER=""
           
@@ -75,7 +78,9 @@ jobs:
             [ -z "$file" ] && continue
             echo "--- Processing: $file ---"
             
+            # 移除已有的摘要块，防止 AI 在总结中包含旧的摘要
             sed '/<!-- ai-summary-start -->/,/<!-- ai-summary-end -->/d' "$file" > body.tmp
+            
             JSON_PAYLOAD=$(jq -n \
               --rawfile user body.tmp \
               --arg sys "You are an expert content strategist. Analyze the provided blog post and extract the core value and key takeaways. Summarize them into 2-3 high-impact bullet points using a Markdown list. Output ONLY the summary text, no preamble, no quotes, and no conversational filler." \
@@ -89,8 +94,6 @@ jobs:
             while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
               echo "Attempt $((RETRY_COUNT + 1))/$MAX_RETRIES..."
               
-              # Directly call curl. If HOST_HEADER is empty, the -H "Host: " will be ignored or handled.
-              # We use a conditional to only pass the Host header if BYPASS_CF is true.
               if [ -n "$HOST_HEADER" ]; then
                 RESPONSE_FULL=$(curl -sLk -A "$UA" \
                   -H "$HOST_HEADER" \
@@ -119,26 +122,32 @@ jobs:
                   break
                 fi
               elif [ "$HTTP_STATUS" -eq 403 ]; then
-                echo "Error 403: Forbidden. Cloudflare challenge detected. Bypass CF is likely failing."
+                echo "Error 403: Forbidden. Cloudflare challenge detected."
                 sleep 10
               fi
               
-              echo "Error: Invalid response. Body snippet: ${RESPONSE_BODY:0:150}..."
+              echo "Error: Invalid response or empty content."
+              # 只有在失败时才打印完整体，避免日志过载，但确保能查到原因
+              echo "Full Response Body: $RESPONSE_BODY"
+              
               RETRY_COUNT=$((RETRY_COUNT + 1))
               [ $RETRY_COUNT -lt $MAX_RETRIES ] && sleep $(( 2 ** RETRY_COUNT ))
             done
             
             if [ -z "$SUMMARY" ] || [ "$SUMMARY" == "null" ]; then
-              echo "Failed to get summary for $file. Skipping."
+              echo "FAILED to get summary for $file. Skipping."
               rm -f body.tmp
               continue
             fi
             
+            # 生成完整的摘要块
             printf "<!-- ai-summary-start -->\n<details>\n  <summary>AI Summary</summary>\n  <div class=\"ai-summary-content\">\n    %s\n  </div>\n</details>\n<!-- ai-summary-end -->\n" "$SUMMARY" > summary_block.tmp
             
             if grep -q "<!-- ai-summary-start -->" "$file"; then
-              awk 'BEGIN {while ((getline line < "summary_block.tmp") > 0) {block = block line "\n"}} /<!-- ai-summary-start -->/ {print $0; printf "%s", block; skip = 1; next} /<!-- ai-summary-end -->/ {skip = 0; print $0; next} skip {next} {print $0}' "$file" > "$file.tmp" && mv "$file.tmp" "$file"
+              # 修复后的 awk：完全替换 start 到 end 之间的内容，不重复打印 $0
+              awk 'BEGIN {while ((getline line < "summary_block.tmp") > 0) {block = block line "\n"}} /<!-- ai-summary-start -->/ {printf "%s", block; skip = 1; next} /<!-- ai-summary-end -->/ {skip = 0; next} skip {next} {print}' "$file" > "$file.tmp" && mv "$file.tmp" "$file"
             else
+              # 插入到 Frontmatter 之后
               SECOND_DASH_LINE=$(grep -n "^---$" "$file" | sed -n '2p' | cut -d: -f1)
               [ -z "$SECOND_DASH_LINE" ] && SECOND_DASH_LINE=0
               head -n "$SECOND_DASH_LINE" "$file" > "$file.tmp"
@@ -156,11 +165,11 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add src/content/posts/**/*.md
+          # 修改为目录级别添加，确保所有深层子目录的文件都被捕捉
+          git add src/content/posts/
           if ! git diff --quiet; then
             git commit -m "docs: update AI summaries"
             git push
           else
             echo "No changes to commit."
           fi
-          
