@@ -115,6 +115,7 @@ jobs:
               RESPONSE_BODY=$(echo "$RESPONSE_FULL" | sed '$d')
               
               echo "HTTP Status: $HTTP_STATUS"
+              echo "Full Response Body: $RESPONSE_BODY"
               
               if [ "$HTTP_STATUS" -eq 200 ]; then
                 SUMMARY=$(echo "$RESPONSE_BODY" | jq -r '.choices[0].message.content // empty' 2>/dev/null | sed 's/^[ \t]*//;s/[ \t]*$//')
@@ -128,7 +129,6 @@ jobs:
               
               echo "Error: Invalid response or empty content."
               # 只有在失败时才打印完整体，避免日志过载，但确保能查到原因
-              echo "Full Response Body: $RESPONSE_BODY"
               
               RETRY_COUNT=$((RETRY_COUNT + 1))
               [ $RETRY_COUNT -lt $MAX_RETRIES ] && sleep $(( 2 ** RETRY_COUNT ))
@@ -167,6 +167,8 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           # 修改为目录级别添加，确保所有深层子目录的文件都被捕捉
           git add src/content/posts/
+          git status
+          git diff
           if ! git diff --quiet; then
             git commit -m "docs: update AI summaries"
             git push
