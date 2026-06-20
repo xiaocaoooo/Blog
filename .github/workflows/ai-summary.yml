@@ -96,7 +96,7 @@ jobs:
             while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
               echo "Requesting summary from AI (Attempt $((RETRY_COUNT + 1))/$MAX_RETRIES)..."
               
-              RESPONSE=$(curl -sf "$BASE_URL/chat/completions" \
+              RESPONSE=$(curl -s "$BASE_URL/chat/completions" \
                 -H "Authorization: Bearer $OPENAI_API_KEY" \
                 -H "Content-Type: application/json" \
                 -d "$JSON_PAYLOAD")
