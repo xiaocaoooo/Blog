@@ -167,7 +167,9 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           # 修改为目录级别添加，确保所有深层子目录的文件都被捕捉
           git add src/content/posts/
+          echo "Git status"
           git status
+          echo "Git diff"
           git diff
           if ! git diff --quiet; then
             git commit -m "docs: update AI summaries"
