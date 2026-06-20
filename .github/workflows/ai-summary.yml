@@ -32,7 +32,6 @@ jobs:
         run: |
           TOUCH_FILE="files_to_process.txt"
           touch $TOUCH_FILE
-          
           if [ "${{ github.event_name }}" == "push" ]; then
             echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' > $TOUCH_FILE
           else
@@ -42,7 +41,6 @@ jobs:
               fi
             done
           fi
-          
           COUNT=$(wc -l < $TOUCH_FILE)
           echo "count=$COUNT" >> $GITHUB_OUTPUT
 
@@ -57,7 +55,6 @@ jobs:
           TARGET_DOMAIN: ${{ secrets.TARGET_DOMAIN }}
         run: |
           MODEL="${OPENAI_MODEL:-gpt-4o-mini}"
-          
           if [ "${BYPASS_CF}" == "true" ]; then
             API_URL="http://${ORIGIN_IP}/v1/chat/completions"
             EXTRA_HEADERS="-H Host:${TARGET_DOMAIN}"
@@ -67,48 +64,51 @@ jobs:
             API_URL="${CLEAN_URL}/chat/completions"
             EXTRA_HEADERS=""
           fi
-          
           UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
           
           while IFS= read -r file; do
             [ -z "$file" ] && continue
+            echo "--- Processing: $file ---"
             
             sed '/<!-- ai-summary-start -->/,/<!-- ai-summary-end -->/d' "$file" > body.tmp
-            
             JSON_PAYLOAD=$(jq -n \
               --rawfile user body.tmp \
               --arg sys "You are an expert content strategist. Analyze the provided blog post and extract the core value and key takeaways. Summarize them into 2-3 high-impact bullet points using a Markdown list. Output ONLY the summary text, no preamble, no quotes, and no conversational filler." \
               --arg model "$MODEL" \
-              '{
-                model: $model,
-                messages: [
-                  {role: "system", content: $sys},
-                  {role: "user", content: $user}
-                ],
-                temperature: 0.7
-              }')
+              '{model: $model, messages: [{role: "system", content: $sys}, {role: "user", content: $user}], temperature: 0.7}')
             
             MAX_RETRIES=5
             RETRY_COUNT=0
             SUMMARY=""
             
             while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-              RESPONSE=$(curl -sL -A "$UA" $EXTRA_HEADERS "$API_URL" \
+              echo "Attempt $((RETRY_COUNT + 1))/$MAX_RETRIES... URL: $API_URL"
+              
+              RESPONSE_FULL=$(curl -sL -A "$UA" $EXTRA_HEADERS "$API_URL" \
                 -H "Authorization: Bearer $OPENAI_API_KEY" \
                 -H "Content-Type: application/json" \
-                -d "$JSON_PAYLOAD")
+                -d "$JSON_PAYLOAD" \
+                -w "\n%{http_code}")
               
-              SUMMARY=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // empty' | sed 's/^[ \t]*//;s/[ \t]*$//')
+              HTTP_STATUS=$(echo "$RESPONSE_FULL" | tail -n 1)
+              RESPONSE_BODY=$(echo "$RESPONSE_FULL" | sed '$d')
               
-              if [ -n "$SUMMARY" ] && [ "$SUMMARY" != "null" ]; then
-                break
+              echo "HTTP Status: $HTTP_STATUS"
+              
+              if [ "$HTTP_STATUS" -eq 200 ]; then
+                SUMMARY=$(echo "$RESPONSE_BODY" | jq -r '.choices[0].message.content // empty' 2>/dev/null | sed 's/^[ \t]*//;s/[ \t]*$//')
+                if [ -n "$SUMMARY" ] && [ "$SUMMARY" != "null" ]; then
+                  break
+                fi
               fi
               
+              echo "Error: Invalid response or non-200 status. Body: ${RESPONSE_BODY:0:200}..."
               RETRY_COUNT=$((RETRY_COUNT + 1))
               [ $RETRY_COUNT -lt $MAX_RETRIES ] && sleep $(( 2 ** RETRY_COUNT ))
             done
             
             if [ -z "$SUMMARY" ] || [ "$SUMMARY" == "null" ]; then
+              echo "Failed to get summary for $file. Skipping."
               rm -f body.tmp
               continue
             fi
@@ -116,26 +116,7 @@ jobs:
             printf "<!-- ai-summary-start -->\n<details>\n  <summary>AI Summary</summary>\n  <div class=\"ai-summary-content\">\n    %s\n  </div>\n</details>\n<!-- ai-summary-end -->\n" "$SUMMARY" > summary_block.tmp
             
             if grep -q "<!-- ai-summary-start -->" "$file"; then
-              awk '
-                BEGIN {
-                  while ((getline line < "summary_block.tmp") > 0) {
-                    block = block line "\n"
-                  }
-                }
-                /<!-- ai-summary-start -->/ { 
-                  print $0
-                  printf "%s", block
-                  skip = 1
-                  next 
-                }
-                /<!-- ai-summary-end -->/ { 
-                  skip = 0
-                  print $0
-                  next 
-                }
-                skip { next }
-                { print $0 }
-              ' "$file" > "$file.tmp" && mv "$file.tmp" "$file"
+              awk 'BEGIN {while ((getline line < "summary_block.tmp") > 0) {block = block line "\n"}} /<!-- ai-summary-start -->/ {print $0; printf "%s", block; skip = 1; next} /<!-- ai-summary-end -->/ {skip = 0; print $0; next} skip {next} {print $0}' "$file" > "$file.tmp" && mv "$file.tmp" "$file"
             else
               SECOND_DASH_LINE=$(grep -n "^---$" "$file" | sed -n '2p' | cut -d: -f1)
               [ -z "$SECOND_DASH_LINE" ] && SECOND_DASH_LINE=0
