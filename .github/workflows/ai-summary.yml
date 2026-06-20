@@ -55,18 +55,19 @@ jobs:
           TARGET_DOMAIN: ${{ secrets.TARGET_DOMAIN }}
         run: |
           MODEL="${OPENAI_MODEL:-gpt-4o-mini}"
+          HOST_HEADER=""
+          
           if [ "${BYPASS_CF}" == "true" ]; then
-            echo "🚀 Mode: Bypass Cloudflare (Direct Origin IP)"
+            echo "Mode: Bypass Cloudflare (Direct Origin IP)"
             API_URL="http://${ORIGIN_IP}/v1/chat/completions"
-            EXTRA_HEADERS="-H \"Host: ${TARGET_DOMAIN}\""
+            HOST_HEADER="Host:${TARGET_DOMAIN}"
           else
-            echo "🌐 Mode: Public Route (via Cloudflare/Proxy)"
+            echo "Mode: Public Route (via Cloudflare/Proxy)"
             BASE_URL="${OPENAI_BASEURL:-https://api.openai.com/v1}"
             CLEAN_URL=$(echo "$BASE_URL" | sed 's:/*$::')
             API_URL="${CLEAN_URL}/chat/completions"
-            EXTRA_HEADERS=""
           fi
-          echo "📡 Target API URL: $API_URL"
+          echo "Target API URL: $API_URL"
           
           UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
           
@@ -88,11 +89,24 @@ jobs:
             while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
               echo "Attempt $((RETRY_COUNT + 1))/$MAX_RETRIES..."
               
-              RESPONSE_FULL=$(eval "curl -sL -A \"$UA\" $EXTRA_HEADERS \"$API_URL\" \
-                -H \"Authorization: Bearer $OPENAI_API_KEY\" \
-                -H \"Content-Type: application/json\" \
-                -d '$JSON_PAYLOAD' \
-                -w '\n%{http_code}'")
+              # Directly call curl. If HOST_HEADER is empty, the -H "Host: " will be ignored or handled.
+              # We use a conditional to only pass the Host header if BYPASS_CF is true.
+              if [ -n "$HOST_HEADER" ]; then
+                RESPONSE_FULL=$(curl -sL -A "$UA" \
+                  -H "$HOST_HEADER" \
+                  -H "Authorization: Bearer $OPENAI_API_KEY" \
+                  -H "Content-Type: application/json" \
+                  -d "$JSON_PAYLOAD" \
+                  "$API_URL" \
+                  -w "\n%{http_code}")
+              else
+                RESPONSE_FULL=$(curl -sL -A "$UA" \
+                  -H "Authorization: Bearer $OPENAI_API_KEY" \
+                  -H "Content-Type: application/json" \
+                  -d "$JSON_PAYLOAD" \
+                  "$API_URL" \
+                  -w "\n%{http_code}")
+              fi
               
               HTTP_STATUS=$(echo "$RESPONSE_FULL" | tail -n 1)
               RESPONSE_BODY=$(echo "$RESPONSE_FULL" | sed '$d')
@@ -105,7 +119,7 @@ jobs:
                   break
                 fi
               elif [ "$HTTP_STATUS" -eq 403 ]; then
-                echo "❌ Error 403: Forbidden. Cloudflare challenge detected. Bypass CF is likely failing."
+                echo "Error 403: Forbidden. Cloudflare challenge detected. Bypass CF is likely failing."
                 sleep 10
               fi
               
