@@ -165,13 +165,14 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          # 修改为目录级别添加，确保所有深层子目录的文件都被捕捉
-          git add src/content/posts/
-          echo "Git status"
-          git status
-          echo "Git diff"
-          git diff
-          if ! git diff --quiet; then
+
+          # 1. 直接检查工作区与最后一次提交之间是否有差异
+          # 注意：这里指定了目录，只检查该目录下的修改
+          if ! git diff --quiet src/content/posts/; then
+            echo "Changes detected, committing..."
+            
+            # 2. 确认有修改后，再将其添加到暂存区
+            git add src/content/posts/
             git commit -m "docs: update AI summaries"
             git push
           else
