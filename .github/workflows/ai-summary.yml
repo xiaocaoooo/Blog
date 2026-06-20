@@ -1,0 +1,176 @@
+name: AI Summary
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/content/posts/**/*.md'
+  workflow_dispatch: # 允许手动触发扫描全量文件
+
+jobs:
+  summarize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v42
+        with:
+          files: src/content/posts/**/*.md
+
+      - name: Determine files to process
+        id: files-to-process
+        run: |
+          # 创建一个临时文件存储需要处理的文件列表
+          TOUCH_FILE="files_to_process.txt"
+          touch $TOUCH_FILE
+          
+          if [ "${{ github.event_name }}" == "push" ]; then
+            echo "Event is push: processing changed files..."
+            # 将变更的文件列表写入文件，每行一个
+            echo "${{ steps.changed-files.outputs.all_changed_files }}" | tr ' ' '\n' > $TOUCH_FILE
+          else
+            echo "Event is workflow_dispatch: scanning for files missing summaries..."
+            # 查找所有 .md 文件，且不包含 ai-summary-start 标记的文件
+            find src/content/posts/ -name "*.md" | while read -r file; do
+              if ! grep -q "<!-- ai-summary-start -->" "$file"; then
+                echo "$file" >> $TOUCH_FILE
+              fi
+            done
+          fi
+          
+          # 计算文件数量
+          COUNT=$(wc -l < $TOUCH_FILE)
+          echo "count=$COUNT" >> $GITHUB_OUTPUT
+          echo "Files to process:"
+          cat $TOUCH_FILE
+
+      - name: Run AI Summary
+        if: steps.files-to-process.outputs.count != '0'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_BASEURL: ${{ secrets.OPENAI_BASEURL }}
+          OPENAI_MODEL: ${{ secrets.OPENAI_MODEL }}
+        run: |
+          BASE_URL="${OPENAI_BASEURL:-https://api.openai.com/v1}"
+          MODEL="${OPENAI_MODEL:-gpt-4o-mini}"
+          
+          # 使用 IFS= read -r 确保处理带空格的文件名
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            echo "Processing $file..."
+            
+            # --- 修复点：处理超长文章 ---
+            # 1. 将正文提取到临时文件，而不是存储在 Shell 变量中
+            # 剔除旧摘要，避免 AI 循环总结
+            sed '/<!-- ai-summary-start -->/,/<!-- ai-summary-end -->/d' "$file" > body.tmp
+            
+            # 2. 构建 JSON Payload
+            # 使用 --rawfile 从文件直接读取内容，避开 Shell ARG_MAX 限制
+            JSON_PAYLOAD=$(jq -n \
+              --rawfile user body.tmp \
+              --arg sys "You are a professional blog editor. Summarize the following article into 2-3 concise bullet points using Markdown list format (e.g., '- Point 1'). Output ONLY the summary text, no preamble, no quotes, and no conversational filler." \
+              --arg model "$MODEL" \
+              '{
+                model: $model,
+                messages: [
+                  {role: "system", content: $sys},
+                  {role: "user", content: $user}
+                ],
+                temperature: 0.7
+              }')
+            
+            MAX_RETRIES=5
+            RETRY_COUNT=0
+            SUMMARY=""
+            
+            while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+              echo "Requesting summary from AI (Attempt $((RETRY_COUNT + 1))/$MAX_RETRIES)..."
+              
+              RESPONSE=$(curl -sf "$BASE_URL/chat/completions" \
+                -H "Authorization: Bearer $OPENAI_API_KEY" \
+                -H "Content-Type: application/json" \
+                -d "$JSON_PAYLOAD")
+              
+              SUMMARY=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // empty' | sed 's/^[ \t]*//;s/[ \t]*$//')
+              
+              if [ -n "$SUMMARY" ] && [ "$SUMMARY" != "null" ]; then
+                break
+              fi
+              
+              RETRY_COUNT=$((RETRY_COUNT + 1))
+              [ $RETRY_COUNT -lt $MAX_RETRIES ] && sleep 5
+            done
+            
+            if [ -z "$SUMMARY" ] || [ "$SUMMARY" == "null" ]; then
+              echo "Failed to get summary for $file, skipping."
+              rm -f body.tmp
+              continue
+            fi
+            
+            # 构建 HTML 块
+            printf "<!-- ai-summary-start -->\n<details>\n  <summary>AI Summary</summary>\n  <div class=\"ai-summary-content\">\n    %s\n  </div>\n</details>\n<!-- ai-summary-end -->\n" "$SUMMARY" > summary_block.tmp
+            
+            # 3. 写入文件
+            if grep -q "<!-- ai-summary-start -->" "$file"; then
+              echo "Updating existing summary in $file..."
+              awk '
+                BEGIN {
+                  while ((getline line < "summary_block.tmp") > 0) {
+                    block = block line "\n"
+                  }
+                }
+                /<!-- ai-summary-start -->/ { 
+                  print $0
+                  printf "%s", block
+                  skip = 1
+                  next 
+                }
+                /<!-- ai-summary-end -->/ { 
+                  skip = 0
+                  print $0
+                  next 
+                }
+                skip { next }
+                { print $0 }
+              ' "$file" > "$file.tmp" && mv "$file.tmp" "$file"
+            else
+              echo "Inserting new summary into $file..."
+              # 寻找第二个 --- (Frontmatter 结束线)
+              SECOND_DASH_LINE=$(grep -n "^---$" "$file" | sed -n '2p' | cut -d: -f1)
+              
+              if [ -z "$SECOND_DASH_LINE" ]; then
+                SECOND_DASH_LINE=0
+              fi
+              
+              head -n "$SECOND_DASH_LINE" "$file" > "$file.tmp"
+              echo "" >> "$file.tmp"
+              cat summary_block.tmp >> "$file.tmp"
+              echo "" >> "$file.tmp"
+              tail -n +$((SECOND_DASH_LINE + 1)) "$file" >> "$file.tmp"
+              mv "$file.tmp" "$file"
+            fi
+            rm -f body.tmp summary_block.tmp
+          done < files_to_process.txt
+
+      - name: Commit and Push
+        if: steps.files-to-process.outputs.count != '0'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add src/content/posts/**/*.md
+          if ! git diff --quiet; then
+            git commit -m "docs: update AI summaries"
+            git push
+          else
+            echo "No changes to commit."
+          fi
