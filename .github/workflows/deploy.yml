@@ -45,14 +45,8 @@ jobs:
         working-directory: mizuki
         run: pnpm install
 
-      - name: Sync and Overwrite Content
-        run: |
-          rm -rf mizuki/src/content/* || true
-          rsync -av content/ mizuki/ --exclude=.git
-
-      - name: Build
-        working-directory: mizuki
-        run: pnpm build
+      - name: Sync Content and Build
+        run: make CONTENT_DIR=content build
 
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
