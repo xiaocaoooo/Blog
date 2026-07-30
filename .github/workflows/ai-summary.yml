@@ -147,7 +147,7 @@ jobs:
               continue
             fi
             
-            printf "<!-- ai-summary-start -->\n<details>\n  <summary>AI Summary</summary>\n  <div class=\"ai-summary-content\">\n    %s\n  </div>\n</details>\n<!-- ai-summary-end -->\n" "$SUMMARY" > summary_block.tmp
+            printf "<!-- ai-summary-start -->\n<details>\n  <summary>AI Summary</summary>\n  <div class=\"ai-summary-content\">\n\n%s\n\n  </div>\n</details>\n<!-- ai-summary-end -->\n" "$SUMMARY" > summary_block.tmp
             
             if grep -q "<!-- ai-summary-start -->" "$file"; then
               awk 'BEGIN {while ((getline line < "summary_block.tmp") > 0) {block = block line "\n"}} /<!-- ai-summary-start -->/ {printf "%s", block; skip = 1; next} /<!-- ai-summary-end -->/ {skip = 0; next} skip {next} {print}' "$file" > "$file.tmp" && mv "$file.tmp" "$file"
