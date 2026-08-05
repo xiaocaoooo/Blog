@@ -1,0 +1,21 @@
+---
+interface Props {
+  id?: string;
+}
+
+const { id = "G-3004B8BBT7" } = Astro.props;
+---
+
+<!-- Google tag (gtag.js) -->
+<script is:inline async src={`https://www.googletagmanager.com/gtag/js?id=${id}`}></script>
+<script is:inline define:vars={{ gaId: id }}>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', gaId);
+
+  document.addEventListener('astro:page-load', () => {
+    gtag('config', gaId, { page_path: window.location.pathname });
+  });
+</script>
