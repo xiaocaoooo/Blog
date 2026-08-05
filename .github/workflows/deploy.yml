@@ -48,7 +48,7 @@ jobs:
         run: pnpm install
 
       - name: Sync Content and Build
-        run: make CONTENT_DIR=content build
+        run: make -f content/Makefile CONTENT_DIR=content build
 
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
