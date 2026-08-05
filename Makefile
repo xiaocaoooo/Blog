@@ -31,7 +31,7 @@ setup:
 			cd $(MIZUKI_DIR) && git reset --hard HEAD && git clean -fd && (git pull origin $$(git rev-parse --abbrev-ref HEAD) || true); \
 		fi; \
 	fi
-	@$(MAKE) install
+	@cd $(MIZUKI_DIR) && pnpm install
 
 install:
 	@cd $(MIZUKI_DIR) && pnpm install
@@ -55,4 +55,3 @@ preview: build
 
 clean:
 	rm -rf $(MIZUKI_DIR)/dist $(MIZUKI_DIR)/.astro
-
