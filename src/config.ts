@@ -438,6 +438,12 @@ export const expressiveCodeConfig: ExpressiveCodeConfig = {
 	theme: "github-dark",
 	// 是否在主题切换时隐藏代码块以避免卡顿问题
 	hideDuringThemeTransition: true,
+	collapsible: {
+		enable: true,
+		lineThreshold: 20,
+		previewLines: 10,
+		defaultCollapsed: true,
+	},
 };
 
 export const commentConfig: CommentConfig = {
