@@ -1,4 +1,4 @@
-MIZUKI_REPO ?= LyraVoid/Mizuki
+MIZUKI_REPO ?= LyraVoid/Shirone
 MIZUKI_DIR ?= mizuki
 CONTENT_DIR ?= .
 
