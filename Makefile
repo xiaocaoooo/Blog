@@ -1,8 +1,15 @@
 MIZUKI_REPO ?= LyraVoid/Shirone
-MIZUKI_DIR ?= mizuki
+MIZUKI_DIR  ?= mizuki
 CONTENT_DIR ?= .
 
-.PHONY: all setup sync build preview clean help
+MKFILE_DIR  := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+
+MIZUKI_DIR  := $(abspath $(MKFILE_DIR)$(MIZUKI_DIR))
+CONTENT_DIR := $(abspath $(MKFILE_DIR)$(CONTENT_DIR))
+
+MIZUKI_NAME := $(notdir $(MIZUKI_DIR))
+
+.PHONY: all setup install sync build preview clean help
 
 all: build
 
@@ -43,7 +50,7 @@ sync: setup
 		--exclude=.git \
 		--exclude=.gitignore \
 		--exclude=.github \
-		--exclude=$(MIZUKI_DIR) \
+		--exclude=$(MIZUKI_NAME) \
 		--exclude=Makefile \
 		--exclude=node_modules
 	@cd $(MIZUKI_DIR) && git apply $(CONTENT_DIR)/diff.patch
