@@ -2,8 +2,8 @@ MIZUKI_REPO ?= LyraVoid/Shirone
 MIZUKI_DIR  ?= mizuki
 CONTENT_DIR ?= .
 
-MIZUKI_DIR  := $(abspath $(MIZUKI_DIR))
-CONTENT_DIR := $(abspath $(CONTENT_DIR))
+override MIZUKI_DIR  := $(abspath $(MIZUKI_DIR))
+override CONTENT_DIR := $(abspath $(CONTENT_DIR))
 
 MIZUKI_NAME := $(notdir $(MIZUKI_DIR))
 PATCH_FILE  := $(CONTENT_DIR)/diff.patch
