@@ -48,7 +48,7 @@ jobs:
         run: pnpm install
 
       - name: Sync Content and Build
-        run: make -f content/Makefile CONTENT_DIR=content build
+        run: make -f content/Makefile CONTENT_DIR=content MIZUKI_DIR=mizuki SKIP_SETUP=1 build
 
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
