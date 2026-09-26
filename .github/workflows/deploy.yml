@@ -25,10 +25,10 @@ jobs:
         with:
           path: content
 
-      - name: Checkout Mizuki Theme
+      - name: Checkout Shirone Theme
         uses: actions/checkout@v4
         with:
-          repository: LyraVoid/Mizuki
+          repository: LyraVoid/Shirone
           path: mizuki
 
       - name: Install pnpm
@@ -46,12 +46,11 @@ jobs:
       - name: Install Dependencies
         working-directory: mizuki
         run: pnpm install
-
-      - name: Debug Sync Content and Build
-        run: make -f content/Makefile -n CONTENT_DIR=content MIZUKI_DIR=mizuki SKIP_SETUP=1 build
-
+      
       - name: Sync Content and Build
-        run: make -f content/Makefile CONTENT_DIR=content MIZUKI_DIR=mizuki SKIP_SETUP=1 build
+        run: |
+          make -f content/Makefile CONTENT_DIR=content MIZUKI_DIR=mizuki SKIP_SETUP=1 build
+          make -f content/Makefile -n CONTENT_DIR=content MIZUKI_DIR=mizuki SKIP_SETUP=1 build
 
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
