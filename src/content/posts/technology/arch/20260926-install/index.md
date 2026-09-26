@@ -6,6 +6,21 @@ tags: ["技术", "Arch Linux"]
 category: 技术
 ---
 
+<!-- ai-summary-start -->
+<details>
+  <summary>AI Summary</summary>
+  <div class="ai-summary-content">
+
+* [基础系统部署]：详细记录了从引导介质启动到使用 `pacstrap` 安装核心软件包的完整流程，实现了无桌面环境的轻量化 Arch Linux 系统构建。
+* [网络环境配置]：提供了多种网络接入方案，包括使用 `iwctl` 连接 Wi-Fi、通过 macOS 共享网络以及手动配置 DNS，确保安装过程中的软件包下载畅通。
+* [引导与分区管理]：针对 BIOS/MBR 架构，通过 `cfdisk` 进行磁盘分区并使用 `grub-install` 配置引导程序，解决了传统引导模式下的系统启动问题。
+* [系统初始化管理]：涵盖了时区同步、本地化设置、非 root 用户创建及 sudo 权限分配，完成了从 Live CD 环境到可日常维护的基础系统迁移。
+
+  </div>
+</details>
+<!-- ai-summary-end -->
+
+
 # 安装 Arch Linux
 
 [Arch Linux 安装](https://wiki.archlinuxcn.org/wiki/%E5%AE%89%E8%A3%85%E6%8C%87%E5%8D%97)
