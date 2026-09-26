@@ -1,0 +1,93 @@
+diff --git a/src/config/animeConfig.ts b/src/config/animeConfig.ts
+index 0bbb962..33e34fa 100644
+--- a/src/config/animeConfig.ts
++++ b/src/config/animeConfig.ts
+@@ -40,7 +40,7 @@ import { withUserConfig } from "../utils/config-overlay.ts";
+  */
+ export const animeConfig: AnimeConfig = withUserConfig("anime", {
+ 	/** 是否启用番剧页；false 时导航入口同步隐藏，访问 /anime/ 跳转 404 */
+-	enable: true,
++	enable: false,
+ 	title: "$t:anime",
+ 	description: "$t:animeBanner",
+ 
+diff --git a/src/config/gamesConfig.ts b/src/config/gamesConfig.ts
+index 4eb2c8a..9a6ddc1 100644
+--- a/src/config/gamesConfig.ts
++++ b/src/config/gamesConfig.ts
+@@ -13,7 +13,7 @@ import { withUserConfig } from "../utils/config-overlay.ts";
+  * 注：游戏的具体清单数据（游戏名、开发商、封面、评分、时长、简评等）请在 `src/data/games.ts` 中维护。
+  */
+ export const gamesConfig: GamesConfig = withUserConfig("games", {
+-	enable: true,
++	enable: false,
+ 	title: "$t:games",
+ 	description: "$t:gamesBanner",
+ 	categories: [
+diff --git a/src/config/musicConfig.ts b/src/config/musicConfig.ts
+index 66e2eec..f0d3de7 100644
+--- a/src/config/musicConfig.ts
++++ b/src/config/musicConfig.ts
+@@ -64,10 +64,10 @@ export const musicConfig: MusicConfig = withUserConfig("music", {
+ 	meting: {
+ 		server: "netease",
+ 		type: "playlist",
+-		id: "14164869977",
++		id: "7084816374",
+ 		// 进入视口时预取歌单元数据（仅元信息，不预取音频流）：
+ 		// "metadata"（取）| "none"（默认，不取；交互后才请求，卡片显示「尚未请求」占位）
+-		preload: "none",
++		preload: "metadata",
+ 	},
+ 	defaultVolume: 0.7,
+ 	defaultMode: "sequence",
+diff --git a/src/config/sidebarConfig.ts b/src/config/sidebarConfig.ts
+index c0ca2f9..68b1b08 100644
+--- a/src/config/sidebarConfig.ts
++++ b/src/config/sidebarConfig.ts
+@@ -27,9 +27,9 @@ export const sidebarConfig: SidebarConfig = withUserConfig("sidebar", {
+ 	arrangement: "dual",
+ 	side: "left",
+ 	components: [
+-		{ type: "profile", enable: true, slot: "top" },
++		{ type: "profile", enable: false, slot: "top" },
+ 		{ type: "music", enable: true, slot: "top" },
+-		{ type: "announcement", enable: true, slot: "top", pages: ["home"] },
++		{ type: "announcement", enable: false, slot: "top", pages: ["home"] },
+ 		{
+ 			type: "categories",
+ 			enable: true,
+diff --git a/src/config/siteConfig.ts b/src/config/siteConfig.ts
+index 160a603..474c55d 100644
+--- a/src/config/siteConfig.ts
++++ b/src/config/siteConfig.ts
+@@ -10,10 +10,10 @@ import { withUserConfig } from "../utils/config-overlay.ts";
+  * 类型见 src/types/config.ts。
+  */
+ export const siteConfig: SiteConfig = withUserConfig("site", {
+-	site: "https://shirone.mysqil.com/",
++	site: "https://blog-xiaocaoooo.parallel-sekai.org/",
+ 	base: "/",
+-	title: "Shirone",
+-	subtitle: "A Material 3 anime blog",
++	title: "Mizuki",
++	subtitle: "A blog",
+ 	// 电脑端顶栏标题与导航内容区域："left" 左对齐，"center" 居中。
+ 	topAppBar: {
+ 		contentAlign: "center",
+@@ -27,12 +27,12 @@ export const siteConfig: SiteConfig = withUserConfig("site", {
+ 		reduceMotion: true, // 是否展示减少动效切换
+ 		texture: true, // 是否展示背景纹理选择
+ 	},
+-	lang: "en", // Language code, e.g. 'en', 'zh_CN', 'ja', etc.
++	lang: "zh_CN", // Language code, e.g. 'en', 'zh_CN', 'ja', etc.
+ 	// IANA time zone for precise post and moment timestamps. It is independent of lang.
+ 	timeZone: "Asia/Shanghai",
+ 	themeColor: {
+-		hue: 315, // Default hue 0-360. 站点设计默认粉紫（偏二次元）；262 紫 / 345 粉 也可选
+-		fixed: false, // Hide the theme color picker for visitors
++		hue: 320, // Default hue 0-360. 站点设计默认粉紫（偏二次元）；262 紫 / 345 粉 也可选
++		fixed: true, // Hide the theme color picker for visitors
+ 		// Dynamic Material 3 palette style (TonalSpot/Vibrant/Content/Expressive/Rainbow/FruitSalad/Monochrome/Neutral/Fidelity)
+ 		style: "tonalSpot",
+ 		// Design spec version: "2021" (MD3) or "2025" (M3 Expressive)。角色集一致，
