@@ -46,7 +46,7 @@ sync: setup
 		--exclude=$(MIZUKI_DIR) \
 		--exclude=Makefile \
 		--exclude=node_modules
-	@git apply $(CONTENT_DIR)/diff.patch
+	@cd $(MIZUKI_DIR) && git apply $(CONTENT_DIR)/diff.patch
 
 build: sync
 	cd $(MIZUKI_DIR) && pnpm build
