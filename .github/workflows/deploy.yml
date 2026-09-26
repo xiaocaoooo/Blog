@@ -47,6 +47,9 @@ jobs:
         working-directory: mizuki
         run: pnpm install
 
+      - name: Debug Sync Content and Build
+        run: make -f content/Makefile -n CONTENT_DIR=content MIZUKI_DIR=mizuki SKIP_SETUP=1 build
+
       - name: Sync Content and Build
         run: make -f content/Makefile CONTENT_DIR=content MIZUKI_DIR=mizuki SKIP_SETUP=1 build
 
