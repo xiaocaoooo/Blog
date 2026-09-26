@@ -49,8 +49,8 @@ install:
 	@cd "$(MIZUKI_DIR)" && pnpm install
 
 sync:
-	@mkdir -p "$(MIZUKI_DIR)/src/content"
-	@rm -rf "$(MIZUKI_DIR)/src/content/"* || true
+	@mkdir -p "$(MIZUKI_DIR)/src/content/posts"
+	@rm -rf "$(MIZUKI_DIR)/src/content/posts/"* || true
 	@rsync -av "$(CONTENT_DIR)/" "$(MIZUKI_DIR)/" \
 		--exclude=.git \
 		--exclude=.gitignore \
